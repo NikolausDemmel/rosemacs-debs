@@ -603,7 +603,7 @@
 ;; Navigation commands
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun find-ros-file (package-name &optional dont-reload)
+(defun find-ros-file (package-name &optional other-window dont-reload)
   "Open up the directory corresponding to PACKAGE-NAME in dired mode.  If used interactively, tab completion will work."
   (interactive (list (ros-completing-read-pkg-file "Enter ros path: ") nil))
   (multiple-value-bind (package dir-prefix dir-suffix) (parse-ros-file-prefix package-name)
@@ -615,13 +615,17 @@
                        (stack-dir (concat stack-dir dir-prefix dir-suffix)))
                      package-dir)))
       (if path
-          (find-file path)
+          (if other-window (find-file-other-window path) (find-file path))
         (if dont-reload
             (error "Did not find %s in the ros package list." package-name)
           (progn
             (lwarn '(rosemacs) :debug "Did not find %s.  Reloading ros package list and trying again..." package-name)
             (ros-load-package-locations)
-            (find-ros-file package-name t)))))))
+            (find-ros-file package-name other-window t)))))))
+
+(defun find-ros-file-other-window (pkg-name)
+  (interactive (list (ros-completing-read-pkg-file "Enter ros path: ")))
+  (find-ros-file pkg-name t))
 
 (defun view-ros-file (ros-file-name &optional dont-reload)
   "View (open in read-only mode with simpler editing commands — see emacs help) the file corresponding to ROS-FILE-NAME (in form packagename/filename).  If used interactively, tab completion will work."
@@ -638,7 +642,7 @@
             (ros-load-package-locations)
             (view-ros-file ros-file-name t)))))))
 
-(defun find-ros-message (message)
+(defun find-ros-message (message &optional other-window)
   "Open definition of a ros message.  If used interactively, tab completion will work."
   (interactive (list (ros-completing-read-message
                       "Enter message name"
@@ -653,9 +657,18 @@
     (let ((dir (ros-package-dir p)))
       (unless dir
         (error "Could not find directory corresponding to package %s" p))
-      (find-file (concat dir "/msg/" m ".msg")))))
+      (let ((path (concat dir "/msg/" m ".msg")))
+        (if other-window
+            (find-file-other-window path)
+         (find-file path))))))
 
-(defun find-ros-service (service)
+(defun find-ros-message-other-window (msg)
+  (interactive (list (ros-completing-read-message
+                      "Enter message name"
+                      (current-ros-word))))
+  (find-ros-message msg t))
+
+(defun find-ros-service (service other-window)
   "Open definition of a ros service.  If used interactively, tab completion will work."
   (interactive (list (ros-completing-read-service
                       "Enter service name"
@@ -670,7 +683,16 @@
     (let ((dir (ros-package-dir p)))
       (unless dir
         (error "Could not find directory corresponding to package %s" p))
-      (find-file (concat dir "/srv/" m ".srv")))))
+      (let ((path (concat dir "/srv/" m ".srv")))
+        (if other-window
+            (find-file-other-window path)
+          (find-file path))))))
+
+(defun find-ros-service-other-window (srv)
+  (interactive (list (ros-completing-read-service
+                      "Enter service name"
+                      (current-ros-word))))
+  (find-ros-service srv t))
 
 (defun action-message-prefix (message-name)
   "if message-name has an action suffix, returns prefix, else nil"
@@ -1553,7 +1575,7 @@ Prefix argument allows you to edit the rosrun command before executing it."
                                    (message "Roslaunch has terminated; relaunching")
                                    (rosemacs/relaunch (process-buffer proc))
                                    )))
-      (error "Buffer doesn't contain a running process"))))
+      (rosemacs/relaunch (current-buffer)))))
 
 
 (defun rosemacs/relaunch-current-process ()
@@ -1612,11 +1634,20 @@ The page delimiter in this buffer matches the start, so you can use forward/back
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defvar ros-keymap (make-sparse-keymap))
+(defvar ros-other-window-keymap (make-sparse-keymap))
+(define-key ros-keymap "4" ros-other-window-keymap)
+
 (define-key ros-keymap "\C-f" 'find-ros-file)
+(define-key ros-other-window-keymap "f" 'find-ros-file-other-window)
+(define-key ros-other-window-keymap "\C-f" 'find-ros-file-other-window)
 (define-key ros-keymap "f" 'view-ros-file)
 (define-key ros-keymap "\C-m" 'find-ros-message)
+(define-key ros-other-window-keymap "m" 'find-ros-message-other-window)
+(define-key ros-other-window-keymap "\C-m" 'find-ros-message-other-window)
 (define-key ros-keymap "m" 'view-ros-message)
 (define-key ros-keymap "\C-s" 'find-ros-service)
+(define-key ros-other-window-keymap "s" 'find-ros-service-other-window)
+(define-key ros-other-window-keymap "\C-s" 'find-ros-service-other-window)
 (define-key ros-keymap "s" 'view-ros-service)
 (define-key ros-keymap "\C-a" 'find-ros-action)
 (define-key ros-keymap "\C-r" 'ros-run)
@@ -1634,6 +1665,7 @@ The page delimiter in this buffer matches the start, so you can use forward/back
 (define-key ros-keymap "\C-n" 'rosemacs/display-nodes)
 (define-key ros-keymap "c" 'ros-make)
 (define-key ros-keymap "a" 'view-ros-action)
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Invoking the mode
