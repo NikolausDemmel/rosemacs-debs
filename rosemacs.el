@@ -1473,6 +1473,23 @@ Prefix argument allows you to edit the rosrun command before executing it."
       (compile command t))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; call make inside package directory
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun ros-compile (package-name)
+  "Execute `make` inside a package directory.  Prompts for package.  With prefix arg, allows editing make command before starting."
+  (interactive (list (ros-completing-read-package
+                      "Enter package to make"
+                      (get-buffer-ros-package)
+                      ros-completion-function)))
+  (save-excursion
+    (message "Compilation started")
+    (let ((command (format "cd `rospack find %s` && make" package-name)))
+      (when current-prefix-arg
+        (setq command (read-from-minibuffer "Confirm: " command )))
+      (compile command t))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; roslaunch
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -1664,6 +1681,7 @@ The page delimiter in this buffer matches the start, so you can use forward/back
 (define-key ros-keymap "\C-e" 'rosemacs/display-event-buffer)
 (define-key ros-keymap "\C-n" 'rosemacs/display-nodes)
 (define-key ros-keymap "c" 'ros-make)
+(define-key ros-keymap "C" 'ros-compile)
 (define-key ros-keymap "a" 'view-ros-action)
 
 
