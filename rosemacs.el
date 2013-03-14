@@ -1484,10 +1484,19 @@ Prefix argument allows you to edit the rosrun command before executing it."
                       ros-completion-function)))
   (save-excursion
     (message "Compilation started")
-    (let ((command (format "cd `rospack find %s` && make" package-name)))
-      (when current-prefix-arg
-        (setq command (read-from-minibuffer "Confirm: " command )))
-      (compile command t))))
+    (let ((directory (substring (shell-command-to-string (format "echo `rospack find %s`" package-name))
+                      0 -1)))
+      (with-temp-buffer
+        ;; start compilation in a temporary buffer with the correct directory,
+        ;; such that the compilation buffer has the right current directory and
+        ;; jumping to error messages works if compilation output has relative
+        ;; paths.
+        (message (format "Changing to directory '%s'" directory))
+        (cd directory)
+        (let ((command "make"))
+          (when current-prefix-arg
+            (setq command (read-from-minibuffer "Confirm: " command)))
+          (compile command t))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; roslaunch
